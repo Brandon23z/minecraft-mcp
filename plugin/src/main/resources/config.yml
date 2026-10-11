@@ -1,0 +1,29 @@
+# MinecraftMCP configuration
+
+mcp:
+  # The MCP endpoint is served at http://<bind>:<port>/mcp
+  # Keep bind on 127.0.0.1 so only programs on this computer can control the world.
+  bind: 127.0.0.1
+  port: 25580
+
+building:
+  # How many blocks are placed per game tick (20 ticks = 1 second).
+  # Lower values make the build slower but easier to watch and interrupt.
+  blocks-per-tick: 400
+  # Edits larger than this ask a player to run /ai approve (or click the chat button) first.
+  approval-threshold: 2000
+  # Seconds to wait for a player to approve before the edit is cancelled.
+  approval-timeout-seconds: 120
+  # Hard cap on blocks changed by a single tool call.
+  max-blocks-per-call: 200000
+  # How many edits can be undone.
+  undo-history: 50
+
+tools:
+  # Adds a run_command tool that runs server commands as the console (time, weather, summon...).
+  # Commands like stop, op and ban are always blocked. The sandbox launcher turns this on.
+  allow-run-command: false
+
+# Grants minecraftmcp.control to every player who joins.
+# The sandbox launcher turns this on. Leave it off on shared servers.
+allow-all-players: false

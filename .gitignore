@@ -1,0 +1,17 @@
+# Gradle
+plugin/.gradle/
+plugin/build/
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+
+# Node
+node_modules/
+launcher/plugin/
+
+# Local sandbox servers
+sandbox/
+
+.DS_Store

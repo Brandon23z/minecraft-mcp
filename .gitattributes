@@ -1,0 +1,8 @@
+* text=auto
+
+# Shell scripts must keep LF line endings to run on macOS and Linux.
+gradlew text eol=lf
+launcher/bin/*.js text eol=lf
+*.bat text eol=crlf
+
+*.jar binary

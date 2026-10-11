@@ -1,0 +1,15 @@
+name: MinecraftMCP
+version: '${version}'
+main: dev.minecraftmcp.MinecraftMcpPlugin
+api-version: '26.2'
+description: Lets an AI assistant build in this world through the Model Context Protocol (MCP).
+website: https://github.com/
+commands:
+  ai:
+    description: Control the AI builder (stop, resume, approve, deny, undo, zone, status).
+    usage: /ai <stop|resume|approve|deny|undo|zone|status>
+    permission: minecraftmcp.control
+permissions:
+  minecraftmcp.control:
+    description: Allows stopping, approving and steering the AI builder.
+    default: op

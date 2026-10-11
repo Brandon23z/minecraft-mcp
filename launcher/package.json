@@ -1,0 +1,29 @@
+{
+  "name": "minecraft-mcp",
+  "version": "0.1.0",
+  "description": "Run a sandbox Paper server that lets an AI assistant build in a copy of your Minecraft world over MCP.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "minecraft-mcp": "bin/minecraft-mcp.js"
+  },
+  "files": [
+    "bin",
+    "plugin"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "bundle-plugin": "node scripts/bundle-plugin.js",
+    "prepack": "node scripts/bundle-plugin.js"
+  },
+  "keywords": [
+    "minecraft",
+    "mcp",
+    "model-context-protocol",
+    "paper",
+    "claude",
+    "ai"
+  ]
+}
