@@ -5,6 +5,9 @@ import dev.minecraftmcp.command.AiCommand;
 import dev.minecraftmcp.control.Controller;
 import dev.minecraftmcp.mcp.McpHttpServer;
 import dev.minecraftmcp.mcp.ToolRegistry;
+import dev.minecraftmcp.tools.RenderTools;
+import dev.minecraftmcp.tools.ShapeTools;
+import dev.minecraftmcp.tools.ToolSupport;
 import dev.minecraftmcp.tools.WorldTools;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -18,7 +21,11 @@ public final class MinecraftMcpPlugin extends JavaPlugin {
             You are building in a live Minecraft world that a player is watching from inside the game.
             - Start with get_world_state and get_player_context so you know where the player is.
             - Coordinates: +X east, -X west, +Z south, -Z north, +Y up. Read terrain with get_surface or read_region before building.
-            - Build in steps (foundation, walls, roof, details) and call get_messages between steps; the player may give feedback in chat.
+            - Prefer the shape tools (fill, line, cylinder, sphere, roof, copy_region) over placing blocks one by one.
+              Build one detail once, then repeat it with copy_region.
+            - Work in steps (foundation, walls, roof, details). After each step, look at it with render_view
+              (isometric for the overall look, a side view for walls and windows) and fix what looks wrong.
+            - Call get_messages between steps; the player may give feedback in chat.
             - Use preview to show a location before large builds. Large edits wait for the player to approve them in game.
             - If a tool says the player stopped you, stop building and read get_messages. Use undo to revert mistakes.
             - When the player is happy, export_schematic saves the build so they can paste it into their real world.""";
@@ -36,7 +43,10 @@ public final class MinecraftMcpPlugin extends JavaPlugin {
         getServer().getScheduler().runTaskTimer(this, queue::tick, 1L, 1L);
 
         ToolRegistry registry = new ToolRegistry(getLogger());
-        new WorldTools(this, queue, controller, registry).registerAll();
+        ToolSupport support = new ToolSupport(this, queue, controller);
+        new WorldTools(support, registry).registerAll();
+        new ShapeTools(support, registry).registerAll();
+        new RenderTools(support, registry).registerAll();
 
         AiCommand aiCommand = new AiCommand(this, controller, queue);
         PluginCommand command = getCommand("ai");

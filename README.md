@@ -33,8 +33,14 @@ Blocks are placed a few hundred per tick, so you see the build go up and can sto
 | `get_messages` | Your chat and control events since the last check |
 | `read_region` | The blocks in a box, as a palette plus one grid per layer |
 | `get_surface` | Terrain heights for finding flat ground |
+| `render_view` | **A picture of the build** (isometric 3D, top-down, or any side), labelled with coordinates, so the AI can see what it built and fix it |
 | `set_blocks` | Place individual blocks (stairs, doors, details) |
 | `fill` | Solid, hollow, outline, or replace fills |
+| `line` | Straight lines in any direction, including diagonals |
+| `cylinder` | Towers, pillars, tunnels and arches (upright or on its side, solid or hollow) |
+| `sphere` | Spheres, domes and bowls |
+| `roof` | Gable or hip roofs of stairs, with correct facing and corner shapes |
+| `copy_region` | Repeat a finished part elsewhere, rotated or mirrored, with directional blocks turned to match |
 | `preview` | Particle outline of a box, to confirm a location |
 | `undo` | Revert the AI's edits |
 | `export_schematic` | Save a build as `.schem` for WorldEdit |
@@ -172,7 +178,8 @@ plugin/     Paper plugin (Java 25, Gradle). Embeds the MCP server, no extra depe
   mcp/        JSON-RPC + Streamable HTTP transport, tool registry
   build/      Throttled build queue with undo journal
   control/    Stop/resume, approvals, build zone, chat inbox
-  tools/      The MCP tools
+  tools/      The MCP tools (world, shapes, rendering)
+  render/     Top-down, side and isometric renderer with coordinate labels
   schematic/  Sponge .schem writer
 launcher/   Node CLI that downloads Paper, copies your world, and runs the sandbox
 ```
@@ -180,7 +187,8 @@ launcher/   Node CLI that downloads Paper, copies your world, and runs the sandb
 ## Roadmap ideas
 
 - Ghost-block previews using block display entities
-- `clone` / `rotate` / `mirror` tools and structure templates
+- Player-made templates: save a build by hand and let the AI study and reuse it
+- A building style guide the AI reads before it starts
 - Block entity contents (chest items, sign text) in undo and schematics
 - Live progress notifications over an SSE stream
 - Fabric mod backend and a Bedrock backend

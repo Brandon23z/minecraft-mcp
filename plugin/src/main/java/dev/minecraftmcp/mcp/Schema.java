@@ -20,6 +20,10 @@ public final class Schema {
         return add(name, prop("number", description), isRequired);
     }
 
+    public Schema bool(String name, String description, boolean isRequired) {
+        return add(name, prop("boolean", description), isRequired);
+    }
+
     public Schema string(String name, String description, boolean isRequired) {
         return add(name, prop("string", description), isRequired);
     }

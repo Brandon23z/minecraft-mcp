@@ -46,6 +46,18 @@ public final class Args {
         return has(name) ? string(name) : fallback;
     }
 
+    public boolean bool(String name, boolean fallback) throws ToolException {
+        if (!has(name)) return fallback;
+        JsonElement el = json.get(name);
+        if (el.isJsonPrimitive() && el.getAsJsonPrimitive().isBoolean()) return el.getAsBoolean();
+        if (el.isJsonPrimitive() && el.getAsJsonPrimitive().isString()) {
+            String s = el.getAsString();
+            if (s.equalsIgnoreCase("true")) return true;
+            if (s.equalsIgnoreCase("false")) return false;
+        }
+        throw new ToolException("'" + name + "' must be true or false");
+    }
+
     public JsonArray array(String name) throws ToolException {
         JsonElement el = require(name);
         if (!el.isJsonArray()) throw new ToolException("'" + name + "' must be an array");

@@ -55,15 +55,17 @@ public final class WorldTools {
     private static final int MAX_SET_BLOCKS = 10_000;
     private static final int MAX_EXPORT_VOLUME = 2_000_000;
 
+    private final ToolSupport support;
     private final JavaPlugin plugin;
     private final BuildQueue queue;
     private final Controller controller;
     private final ToolRegistry registry;
 
-    public WorldTools(JavaPlugin plugin, BuildQueue queue, Controller controller, ToolRegistry registry) {
-        this.plugin = plugin;
-        this.queue = queue;
-        this.controller = controller;
+    public WorldTools(ToolSupport support, ToolRegistry registry) {
+        this.support = support;
+        this.plugin = support.plugin;
+        this.queue = support.queue;
+        this.controller = support.controller;
         this.registry = registry;
     }
 
@@ -146,7 +148,7 @@ public final class WorldTools {
     // ---- Read-only tools ----
 
     private String getWorldState() throws Exception {
-        return sync(() -> {
+        return support.sync(() -> {
             JsonObject state = new JsonObject();
             JsonArray worlds = new JsonArray();
             for (World w : Bukkit.getWorlds()) {
@@ -188,7 +190,7 @@ public final class WorldTools {
 
     private String getPlayerContext(Args args) throws Exception {
         String name = args.string("player", null);
-        return sync(() -> {
+        return support.sync(() -> {
             Player p = resolvePlayer(name);
             Location l = p.getLocation();
             JsonObject ctx = new JsonObject();
@@ -224,13 +226,13 @@ public final class WorldTools {
     }
 
     private String readRegion(Args args) throws Exception {
-        World world = world(args);
-        Box box = box(args, world);
+        World world = ToolSupport.world(args);
+        Box box = ToolSupport.box(args, world);
         if (box.volume() > MAX_READ_VOLUME) {
             throw new ToolException("Region is " + box.volume() + " blocks, the limit is " + MAX_READ_VOLUME
                     + ". Read it in smaller pieces, or use get_surface for terrain.");
         }
-        return sync(() -> {
+        return support.sync(() -> {
             Map<String, Character> palette = new LinkedHashMap<>();
             boolean overflow = false;
             StringBuilder layers = new StringBuilder();
@@ -275,7 +277,7 @@ public final class WorldTools {
     }
 
     private String getSurface(Args args) throws Exception {
-        World world = world(args);
+        World world = ToolSupport.world(args);
         int minX = Math.min(args.integer("x1"), args.integer("x2"));
         int maxX = Math.max(args.integer("x1"), args.integer("x2"));
         int minZ = Math.min(args.integer("z1"), args.integer("z2"));
@@ -284,7 +286,7 @@ public final class WorldTools {
         if (area > MAX_SURFACE_AREA) {
             throw new ToolException("Area is " + area + " columns, the limit is " + MAX_SURFACE_AREA + ".");
         }
-        return sync(() -> {
+        return support.sync(() -> {
             Map<Material, Character> palette = new LinkedHashMap<>();
             StringBuilder heights = new StringBuilder();
             StringBuilder tops = new StringBuilder();
@@ -324,7 +326,7 @@ public final class WorldTools {
     // ---- World-changing tools ----
 
     private String setBlocks(Args args) throws Exception {
-        World world = world(args);
+        World world = ToolSupport.world(args);
         JsonArray items = args.array("blocks");
         if (items.isEmpty()) throw new ToolException("'blocks' is empty.");
         if (items.size() > MAX_SET_BLOCKS) {
@@ -343,7 +345,7 @@ public final class WorldTools {
             String id = item.string("block");
             BlockData data = parsed.get(id);
             if (data == null) {
-                data = parseBlock(id);
+                data = ToolSupport.parseBlock(id);
                 parsed.put(id, data);
             }
             changes.add(new Change(x, y, z, data));
@@ -351,17 +353,17 @@ public final class WorldTools {
             maxX = Math.max(maxX, x); maxY = Math.max(maxY, y); maxZ = Math.max(maxZ, z);
         }
         Box bounds = new Box(world, minX, minY, minZ, maxX, maxY, maxZ);
-        checkHeight(bounds);
+        ToolSupport.checkHeight(bounds);
         String summary = "place " + changes.size() + " blocks around " + bounds.describe();
-        guardEdit(bounds, changes.size(), summary);
-        return runEdit(world, "set_blocks: " + changes.size() + " blocks", changes.iterator());
+        support.guardEdit(bounds, changes.size(), summary);
+        return support.runEdit(world, "set_blocks: " + changes.size() + " blocks", changes.iterator());
     }
 
     private String fill(Args args) throws Exception {
-        World world = world(args);
-        Box box = box(args, world);
-        checkHeight(box);
-        BlockData data = parseBlock(args.string("block"));
+        World world = ToolSupport.world(args);
+        Box box = ToolSupport.box(args, world);
+        ToolSupport.checkHeight(box);
+        BlockData data = ToolSupport.parseBlock(args.string("block"));
         String mode = args.string("mode", "solid").toLowerCase(Locale.ROOT);
         BlockData air = Material.AIR.createBlockData();
 
@@ -383,7 +385,7 @@ public final class WorldTools {
             }
             case "replace" -> {
                 if (!args.has("replace")) throw new ToolException("mode 'replace' needs the 'replace' argument.");
-                Material target = parseBlock(args.string("replace")).getMaterial();
+                Material target = ToolSupport.parseBlock(args.string("replace")).getMaterial();
                 // Runs on the main thread inside BuildQueue.tick(), so reading the world is safe.
                 fn = (x, y, z) -> world.getBlockAt(x, y, z).getType() == target ? data : null;
                 count = box.volume();
@@ -392,15 +394,15 @@ public final class WorldTools {
         }
 
         String summary = mode + "-fill " + box.describe() + " with " + data.getMaterial().getKey().getKey();
-        guardEdit(box, count, summary);
-        return runEdit(world, "fill " + mode + " " + data.getAsString(), iterate(box, fn));
+        support.guardEdit(box, count, summary);
+        return support.runEdit(world, "fill " + mode + " " + data.getAsString(), iterate(box, fn));
     }
 
     private String preview(Args args) throws Exception {
-        World world = world(args);
-        Box box = box(args, world);
+        World world = ToolSupport.world(args);
+        Box box = ToolSupport.box(args, world);
         int seconds = Math.clamp(args.integer("seconds", 15), 1, 120);
-        sync(() -> Outline.show(plugin, box, Color.AQUA, seconds));
+        support.sync(() -> Outline.show(plugin, box, Color.AQUA, seconds));
         return "Showing an outline of " + box.describe() + " for " + seconds
                 + " seconds. Ask the player to confirm, then call get_messages for their reply.";
     }
@@ -413,7 +415,7 @@ public final class WorldTools {
         if (futures.isEmpty()) return "Nothing to undo.";
         int restored = 0;
         for (CompletableFuture<BuildQueue.Result> f : futures) {
-            BuildQueue.Result r = await(f);
+            BuildQueue.Result r = ToolSupport.await(f);
             restored += r.placed();
             if (r.cancelled()) throw new ToolException("A player stopped the undo after restoring " + restored + " blocks.");
         }
@@ -421,8 +423,8 @@ public final class WorldTools {
     }
 
     private String exportSchematic(Args args) throws Exception {
-        World world = world(args);
-        Box box = box(args, world);
+        World world = ToolSupport.world(args);
+        Box box = ToolSupport.box(args, world);
         String name = args.string("name");
         if (!name.matches("[A-Za-z0-9_-]{1,64}")) {
             throw new ToolException("Name may only contain letters, digits, - and _ (max 64 characters).");
@@ -430,7 +432,7 @@ public final class WorldTools {
         if (box.volume() > MAX_EXPORT_VOLUME) {
             throw new ToolException("Region is " + box.volume() + " blocks, the export limit is " + MAX_EXPORT_VOLUME + ".");
         }
-        String[] states = sync(() -> {
+        String[] states = support.sync(() -> {
             String[] s = new String[(int) box.volume()];
             int i = 0;
             for (int y = box.minY(); y <= box.maxY(); y++) {
@@ -464,7 +466,7 @@ public final class WorldTools {
             throw new ToolException("'" + root + "' is reserved for the player.");
         }
         String finalCommand = command;
-        return sync(() -> {
+        return support.sync(() -> {
             StringBuilder output = new StringBuilder();
             CommandSender sender = Bukkit.createCommandSender(
                     component -> output.append(PlainTextComponentSerializer.plainText().serialize(component)).append('\n'));
@@ -509,76 +511,6 @@ public final class WorldTools {
         };
     }
 
-    private void guardEdit(Box bounds, long count, String summary) throws ToolException {
-        controller.ensureRunning();
-        controller.ensureInZone(bounds);
-        long max = plugin.getConfig().getLong("building.max-blocks-per-call", 200_000);
-        if (count > max) {
-            throw new ToolException("That edit touches " + count + " blocks, the limit is " + max
-                    + " per call. Split it into smaller steps.");
-        }
-        if (count > plugin.getConfig().getLong("building.approval-threshold", 2_000)) {
-            controller.requestApproval(summary, bounds,
-                    plugin.getConfig().getInt("building.approval-timeout-seconds", 120));
-            controller.ensureRunning();
-        }
-    }
-
-    private String runEdit(World world, String label, Iterator<Change> changes) throws ToolException {
-        BuildQueue.Result r = await(queue.submit(world, label, changes));
-        if (r.cancelled()) {
-            throw new ToolException("A player stopped this edit after " + r.placed()
-                    + " blocks were changed. Call get_messages to read their feedback before doing anything else.");
-        }
-        return "Done: " + label + ". Changed " + r.placed() + " blocks (edit #" + r.editId() + ", reversible with undo).";
-    }
-
-    private static BuildQueue.Result await(CompletableFuture<BuildQueue.Result> future) throws ToolException {
-        try {
-            return future.get();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new ToolException("Interrupted while building.");
-        } catch (ExecutionException e) {
-            throw new ToolException("Build failed: " + e.getCause());
-        }
-    }
-
-    private static BlockData parseBlock(String id) throws ToolException {
-        try {
-            BlockData data = Bukkit.createBlockData(id.trim().toLowerCase(Locale.ROOT));
-            if (!data.getMaterial().isBlock()) throw new IllegalArgumentException();
-            return data;
-        } catch (IllegalArgumentException e) {
-            throw new ToolException("Unknown block '" + id + "'. Use Minecraft block IDs like 'stone', "
-                    + "'oak_planks' or 'oak_stairs[facing=north,half=bottom]'.");
-        }
-    }
-
-    private static void checkHeight(Box box) throws ToolException {
-        World w = box.world();
-        if (box.minY() < w.getMinHeight() || box.maxY() >= w.getMaxHeight()) {
-            throw new ToolException("Y must be between " + w.getMinHeight() + " and " + (w.getMaxHeight() - 1)
-                    + " in " + w.getName() + ".");
-        }
-    }
-
-    private static World world(Args args) throws ToolException {
-        if (!args.has("world")) return Bukkit.getWorlds().getFirst();
-        String name = args.string("world");
-        World world = Bukkit.getWorld(name);
-        if (world == null) {
-            throw new ToolException("No world named '" + name + "'. Worlds: "
-                    + Bukkit.getWorlds().stream().map(World::getName).toList());
-        }
-        return world;
-    }
-
-    private static Box box(Args args, World world) throws ToolException {
-        return Box.of(world, args.integer("x1"), args.integer("y1"), args.integer("z1"),
-                args.integer("x2"), args.integer("y2"), args.integer("z2"));
-    }
-
     private static Player resolvePlayer(String name) throws ToolException {
         if (name != null) {
             Player p = Bukkit.getPlayerExact(name);
@@ -600,17 +532,5 @@ public final class WorldTools {
         o.addProperty("y", y);
         o.addProperty("z", z);
         return o;
-    }
-
-    /** Runs world access on the main server thread and waits for the result. */
-    private <T> T sync(Callable<T> task) throws Exception {
-        try {
-            return Bukkit.getScheduler().callSyncMethod(plugin, task).get(30, TimeUnit.SECONDS);
-        } catch (ExecutionException e) {
-            if (e.getCause() instanceof Exception cause) throw cause;
-            throw e;
-        } catch (TimeoutException e) {
-            throw new ToolException("The server took too long to respond. Try a smaller request.");
-        }
     }
 }
